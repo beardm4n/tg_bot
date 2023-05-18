@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"log"
 	"net/http"
 	"strconv"
@@ -50,7 +50,7 @@ func getUpdates(botUrl string, offset int) ([]Update, error) {
 	defer resp.Body.Close()
 
 	// ответ от сервера получаем в байтах, необходимо обработать его
-	body, err := ioutil.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, err
 	}
