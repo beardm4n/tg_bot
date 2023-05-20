@@ -31,6 +31,7 @@ func getUpdates(baseUrl string, botToken string, apiMethod string) ([]Update, er
 		fmt.Println("Ошибка при отправке запроса:", err)
 		return nil, err
 	}
+	defer response.Body.Close()
 
 	// ответ от сервера получаем в байтах, необходимо обработать его
 	body, err := io.ReadAll(resp.Body)
@@ -49,7 +50,8 @@ func getUpdates(baseUrl string, botToken string, apiMethod string) ([]Update, er
 	// необходимо распарсить json, полученный от сервера, который приведем к структуре RestResponse
 	err = json.Unmarshal(body, &restResponse)
 	if err != nil {
-		return nil, err
+		log.Println("Ошибка при чтении ответа:", err)
+		return
 	}
 
 	return restResponse.Result, nil
