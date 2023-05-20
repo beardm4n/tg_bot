@@ -28,10 +28,9 @@ func getUpdates(baseUrl string, botToken string, apiMethod string) ([]Update, er
 
 	resp, err := http.Get(apiUrl)
 	if err != nil {
-		fmt.Println("Ошибка при отправке запроса:", err)
+		fmt.Println("Something went wrong in requset:", err)
 		return nil, err
 	}
-	defer response.Body.Close()
 
 	// ответ от сервера получаем в байтах, необходимо обработать его
 	body, err := io.ReadAll(resp.Body)
@@ -40,19 +39,18 @@ func getUpdates(baseUrl string, botToken string, apiMethod string) ([]Update, er
 
 	if err != nil {
 		if err != nil {
-			fmt.Println("Ошибка при обработки запроса:", err)
+			fmt.Println("Something went wrong in error handling:", err)
 			return nil, err
 		}
 	}
 
 	var restResponse RestResponse
 
-	// необходимо распарсить json, полученный от сервера, который приведем к структуре RestResponse
+	// необходим распарсить json, который получили от сервера, который приведем к структуре RestResponse
 	err = json.Unmarshal(body, &restResponse)
 	if err != nil {
-		log.Println("Ошибка при чтении ответа:", err)
-		return
+		fmt.Println("Something went wrong in parse json:", err)
+		return nil, err
 	}
-
 	return restResponse.Result, nil
 }
