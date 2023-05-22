@@ -26,17 +26,15 @@ func main() {
 		return
 	}
 
-	apiUrl := baseUrl + botToken + "/" + telegramMethods["GET_UPDATES"]
-
 	for {
-		updates, err := getUpdates(apiUrl, offset)
+		updates, err := getUpdates(baseUrl, botToken, telegramMethods["GET_UPDATES"], offset)
 		if err != nil {
 			fmt.Println("Something went wrong in getUpdates: ", err)
 		}
 
 		for _, update := range updates {
-			checkMainCommand(update.Message)
-			
+			checkSentMessage(update.Message)
+
 			offset = update.UpdateId + 1
 		}
 
