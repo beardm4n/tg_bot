@@ -14,10 +14,8 @@ var (
 	botToken string
 	baseUrl  string
 	commands = map[string]string{
-		"/start": "Начать",
-		"/stop":  "Остановить",
-		"/help":  "Помощь",
-		"/about": "О боте",
+		"/start": "Bot is active now. Send /commands to get a list of commands",
+		"/about": "About bot",
 	}
 )
 

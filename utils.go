@@ -68,7 +68,7 @@ func processUpdate(update Update) {
 			if description, ok := commands[command]; ok {
 				sendMessage(message.Chat.Id, description)
 			} else {
-				sendMessage(message.Chat.Id, "Неизвестная команда.")
+				sendMessage(message.Chat.Id, "Unknown coomand.")
 			}
 		}
 	} else {
@@ -87,6 +87,7 @@ func sendMessage(chatId int, text string) error {
 	if err != nil {
 		fmt.Println("Failed to send message:", err)
 	}
+
 	return nil
 }
 
@@ -108,7 +109,7 @@ func sendCommandList(chatId int) error {
 
 	requestBody := BotMessage{
 		ChatId:      chatId,
-		Text:        "Список команд:",
+		Text:        "Commands list:",
 		ReplyMarkup: replyKeyboard,
 	}
 
