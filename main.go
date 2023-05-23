@@ -13,6 +13,12 @@ var (
 	offset   = 0
 	botToken string
 	baseUrl  string
+	commands = map[string]string{
+		"/start": "Начать",
+		"/stop":  "Остановить",
+		"/help":  "Помощь",
+		"/about": "О боте",
+	}
 )
 
 func main() {
@@ -33,7 +39,7 @@ func main() {
 		}
 
 		for _, update := range updates {
-			checkSentMessage(update.Message)
+			processUpdate(update)
 
 			offset = update.UpdateId + 1
 		}

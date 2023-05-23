@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -56,50 +57,74 @@ func getUpdates(baseUrl string, botToken string, method string, offset int) ([]U
 	return restResponse.Result, nil
 }
 
-func checkSentMessage(message Message) {
-	var msg BotMessage
+func processUpdate(update Update) {
+	message := update.Message
+	command := strings.TrimSpace(message.Text)
 
-	if message.Text == "/start" {
-		msg.ChatId = message.Chat.Id
-		msg.Text = "Hi, nice to meet you!"
-
-		sendMessage(baseUrl, botToken, telegramMethods["SEND_MESSAGE"], msg)
-	} else if message.Text == "/stop" {
-		msg.ChatId = message.Chat.Id
-		msg.Text = "Bye bye! see you soon"
-
-		sendMessage(baseUrl, botToken, telegramMethods["SEND_MESSAGE"], msg)
-	} else if strings.Contains(message.Text, "/") {
-		msg.ChatId = message.Chat.Id
-		msg.Text = "Unknow command =/"
-
-		sendMessage(baseUrl, botToken, telegramMethods["SEND_MESSAGE"], msg)
-	} else if !strings.Contains(message.Text, "/") {
-		msg.ChatId = message.Chat.Id
-		msg.Text = message.Text
-
-		sendMessage(baseUrl, botToken, telegramMethods["SEND_MESSAGE"], msg)
+	if strings.HasPrefix(message.Text, "/") {
+		if command == "/commands" {
+			sendCommandList(message.Chat.Id)
+		} else {
+			if description, ok := commands[command]; ok {
+				sendMessage(message.Chat.Id, description)
+			} else {
+				sendMessage(message.Chat.Id, "Неизвестная команда.")
+			}
+		}
+	} else {
+		sendMessage(update.Message.Chat.Id, update.Message.Text)
 	}
 }
 
-func sendMessage(baseUrl string, botToken string, method string, message BotMessage) error {
-	params := url.Values{}
-	params.Set("chat_id", strconv.Itoa(message.ChatId))
-	params.Set("text", message.Text)
+func sendMessage(chatId int, text string) error {
+	data := url.Values{}
+	data.Set("chat_id", strconv.FormatInt(int64(chatId), 10))
+	data.Set("text", text)
 
-	resp, err := http.PostForm(baseUrl+botToken+"/"+method, params)
+	urlStr := baseUrl + botToken + "/" + telegramMethods["SEND_MESSAGE"]
+
+	_, err := http.PostForm(urlStr, data)
 	if err != nil {
-		fmt.Println("Can't send the message: ", err)
+		fmt.Println("Failed to send message:", err)
+	}
+	return nil
+}
+
+func sendCommandList(chatId int) error {
+	buttons := [][]KeyboardButton{}
+
+	for command := range commands {
+		buttonRow := []KeyboardButton{
+			{Text: command},
+		}
+
+		buttons = append(buttons, buttonRow)
+	}
+
+	replyKeyboard := ReplyKeyboardMarkup{
+		Keyboard:        buttons,
+		OneTimeKeyboard: true,
+	}
+
+	requestBody := BotMessage{
+		ChatId:      chatId,
+		Text:        "Список команд:",
+		ReplyMarkup: replyKeyboard,
+	}
+
+	requestBodyJson, err := json.Marshal(requestBody)
+	if err != nil {
+		fmt.Println("Can't encode request body: ", err)
+		return err
+	}
+
+	resp, err := http.Post(baseUrl+botToken+"/"+telegramMethods["SEND_MESSAGE"], "application/json", bytes.NewReader(requestBodyJson))
+	if err != nil {
+		fmt.Println("Can't set menu buttons: ", err)
 		return err
 	}
 
 	resp.Body.Close()
-	resp.StatusCode = 150
-
-	// Проверка статуса ответа
-	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("error HTTP-request. Status Code: %d", resp.StatusCode)
-	}
 
 	return nil
 }
