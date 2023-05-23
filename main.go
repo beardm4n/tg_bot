@@ -9,6 +9,7 @@ var (
 	telegramMethods = map[string]string{
 		"GET_UPDATES":  "getUpdates",
 		"SEND_MESSAGE": "sendMessage",
+		"GET_FILE":     "getFile",
 	}
 	offset   = 0
 	botToken string

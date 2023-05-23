@@ -40,26 +40,58 @@ func getUpdates(baseUrl string, botToken string, method string, offset int) ([]U
 
 	if err != nil {
 		if err != nil {
-			fmt.Println("Something went wrong in error handling: ", err)
+			fmt.Println("Something went wrong in error handling in getUpdates: ", err)
 			return nil, err
 		}
 	}
 
-	var restResponse RestResponse
+	var restResponse MessageResponse
 
 	// необходим распарсить json, который получили от сервера, который приведем к структуре RestResponse
 	err = json.Unmarshal(body, &restResponse)
 	if err != nil {
-		fmt.Println("Something went wrong in parse json: ", err)
+		fmt.Println("Something went wrong in parse json in getUpdates: ", err)
 		return nil, err
 	}
 
 	return restResponse.Result, nil
 }
 
+func getFile(fileId string) File {
+	urlGetFile := baseUrl + botToken + "/" + telegramMethods["GET_FILE"] + "?file_id=" + fileId
+
+	resp, err := http.Get(urlGetFile)
+	if err != nil {
+		fmt.Println("Something went wrong in error handling in getFile: ", err)
+	}
+
+	// ответ от сервера получаем в байтах, необходимо обработать его
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		if err != nil {
+			fmt.Println("Something went wrong in error handling in getUpdates: ", err)
+		}
+	}
+
+	defer resp.Body.Close()
+
+	var restResponse VoiceResponse
+
+	err = json.Unmarshal(body, &restResponse)
+	if err != nil {
+		fmt.Println("Something went wrong in parse json in getFile: ", err)
+	}
+
+	return restResponse.Result
+}
+
 func processUpdate(update Update) {
 	message := update.Message
 	command := strings.TrimSpace(message.Text)
+
+	if len(message.Voice.FileId) != 0 {
+		getFile(message.Voice.FileId)
+	}
 
 	if strings.HasPrefix(message.Text, "/") {
 		if command == "/commands" {

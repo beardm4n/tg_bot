@@ -6,16 +6,21 @@ type Update struct {
 }
 
 type Message struct {
-	Chat Chat   `json:"chat"`
-	Text string `json:"text"`
+	Chat  Chat   `json:"chat"`
+	Text  string `json:"text"`
+	Voice Voice  `json:"voice"`
 }
 
 type Chat struct {
 	Id int `json:"id"`
 }
 
-type RestResponse struct {
+type MessageResponse struct {
 	Result []Update `json:"result"`
+}
+
+type VoiceResponse struct {
+	Result File `json:"result"`
 }
 
 type BotMessage struct {
@@ -33,4 +38,17 @@ type KeyboardButton struct {
 	Text            string `json:"text"`
 	RequestContact  bool   `json:"request_contact,omitempty"`
 	RequestLocation bool   `json:"request_location,omitempty"`
+}
+
+type Voice struct {
+	FileId     string `json:"file_id"`
+	FileUniqId string `json:"file_unique_id"`
+	Duration   int    `json:"duration"`
+}
+
+type File struct {
+	FileId     string `json:"file_id"`
+	FileUniqId string `json:"file_unique_id"`
+	FileSize   int    `json:"file_size"`
+	FilePath   string `json:"file_path"`
 }
