@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 
@@ -22,6 +23,8 @@ func initEnv() error {
 
 	botToken = os.Getenv("BOT_TOKEN")
 	baseUrl = os.Getenv("BASE_URL")
+	fileUrl = os.Getenv("FILE_URL")
+	basePathToSaveFile = os.Getenv("BASE_PATH_TO_SAVE_FILE")
 
 	return nil
 }
@@ -85,12 +88,49 @@ func getFile(fileId string) File {
 	return restResponse.Result
 }
 
+func downloadFile(message Message) {
+	// перенести код ниже сюда
+	// посмотреть как можно унифицировать слэши в пути для разных ОС
+	file := getFile(message.Voice.FileId)
+
+	downloadFileUrl := fileUrl + botToken + "/" + file.FilePath
+
+	// Выполняем запрос для получения содержимого файла
+	fileResp, err := http.Get(downloadFileUrl)
+	if err != nil {
+		fmt.Println("Something went wrong in error handling in download file")
+		return
+	}
+
+	defer fileResp.Body.Close()
+
+	filePathOnDisk := filepath.FromSlash(fmt.Sprintf("%s/voice_%s.oga", basePathToSaveFile, message.Voice.FileId))
+
+	// Создаем файл на диске для сохранения содержимого
+	fileOnDisk, err := os.Create(filePathOnDisk)
+	if err != nil {
+		fmt.Println("Something went wrong in create file into disk")
+		return
+	}
+
+	defer fileOnDisk.Close()
+
+	// Копируем полученный файл в файл на диске
+	_, err = io.Copy(fileOnDisk, fileResp.Body)
+	if err != nil {
+		fmt.Println("Something went wrong when save file into disk")
+		return
+	}
+}
+
 func processUpdate(update Update) {
 	message := update.Message
 	command := strings.TrimSpace(message.Text)
 
+	// получение и обработка голосового сообщения
 	if len(message.Voice.FileId) != 0 {
-		getFile(message.Voice.FileId)
+		downloadFile(message)
+		return
 	}
 
 	if strings.HasPrefix(message.Text, "/") {
@@ -109,13 +149,13 @@ func processUpdate(update Update) {
 }
 
 func sendMessage(chatId int, text string) error {
-	data := url.Values{}
-	data.Set("chat_id", strconv.FormatInt(int64(chatId), 10))
-	data.Set("text", text)
+	queryParams := url.Values{}
+	queryParams.Add("chat_id", strconv.FormatInt(int64(chatId), 10))
+	queryParams.Add("text", text)
 
 	urlStr := baseUrl + botToken + "/" + telegramMethods["SEND_MESSAGE"]
 
-	_, err := http.PostForm(urlStr, data)
+	_, err := http.PostForm(urlStr, queryParams)
 	if err != nil {
 		fmt.Println("Failed to send message:", err)
 	}
