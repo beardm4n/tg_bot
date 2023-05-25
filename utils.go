@@ -155,10 +155,13 @@ func sendMessage(chatId int, text string) error {
 
 	urlStr := baseUrl + botToken + "/" + telegramMethods["SEND_MESSAGE"]
 
-	_, err := http.PostForm(urlStr, queryParams)
+	resp, err := http.PostForm(urlStr, queryParams)
 	if err != nil {
 		fmt.Println("Failed to send message:", err)
+		return err
 	}
+
+	resp.Body.Close()
 
 	return nil
 }
