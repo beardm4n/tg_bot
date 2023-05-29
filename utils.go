@@ -13,6 +13,9 @@ import (
 	"strings"
 
 	"github.com/joho/godotenv"
+
+	htgotts "github.com/hegedustibor/htgo-tts"
+	voices "github.com/hegedustibor/htgo-tts/voices"
 )
 
 func initEnv() error {
@@ -145,6 +148,7 @@ func processUpdate(update Update) {
 		}
 	} else {
 		sendMessage(update.Message.Chat.Id, update.Message.Text)
+		textToTalk(update.Message)
 	}
 }
 
@@ -203,4 +207,13 @@ func sendCommandList(chatId int) error {
 	resp.Body.Close()
 
 	return nil
+}
+
+func textToTalk(message Message) {
+	speech := htgotts.Speech{
+		Folder:   "audio",
+		Language: voices.Russian,
+	}
+
+	speech.CreateSpeechFile(message.Text, strconv.Itoa(message.MessageId))
 }

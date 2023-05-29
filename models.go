@@ -6,9 +6,10 @@ type Update struct {
 }
 
 type Message struct {
-	Chat  Chat   `json:"chat"`
-	Text  string `json:"text"`
-	Voice Voice  `json:"voice"`
+	MessageId int    `json:"message_id"`
+	Chat      Chat   `json:"chat"`
+	Text      string `json:"text"`
+	Voice     Voice  `json:"voice"`
 }
 
 type Chat struct {
