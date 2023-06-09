@@ -239,13 +239,13 @@ func convertToOGG(inputFile string) error {
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		if exitErr, ok := err.(*exec.ExitError); ok {
-			fmt.Printf("Скрипт Python завершился с ошибкой: %v\n%s", exitErr, output)
+			fmt.Printf("Python script exited with an error: %v\n%s", exitErr, output)
 		} else {
-			fmt.Printf("Ошибка при выполнении скрипта Python: %v", err)
+			fmt.Printf("Error while executing python script: %v", err)
 		}
 	}
 
-	fmt.Println("Скрипт Python выполнен успешно!")
+	fmt.Println("Python script completed successfully!")
 	fmt.Println(string(output))
 
 	return nil
