@@ -15,11 +15,14 @@ var (
 		"/start": "Bot is active now. Send /commands to get a list of commands",
 		"/about": "About bot",
 	}
-	offset   = 0
-	botToken string
-	baseUrl  string
-	fileUrl  string
-	basePathToSaveFile string
+	offset                = 0
+	folderAudioName       = "audio"
+	botToken              string
+	baseUrl               string
+	fileUrl               string
+	basePathToSaveFile    string
+	basePathToLoadMp3File string
+	basePathToSaveOgaFile string
 )
 
 func main() {

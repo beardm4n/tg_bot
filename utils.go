@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -28,6 +29,8 @@ func initEnv() error {
 	baseUrl = os.Getenv("BASE_URL")
 	fileUrl = os.Getenv("FILE_URL")
 	basePathToSaveFile = os.Getenv("BASE_PATH_TO_SAVE_FILE")
+	basePathToLoadMp3File = os.Getenv("BASE_PATH_TO_LOAD_MP3_FILE")
+	basePathToSaveOgaFile = os.Getenv("BASE_PATH_TO_SAVE_OGA_FILE")
 
 	return nil
 }
@@ -149,6 +152,7 @@ func processUpdate(update Update) {
 	} else {
 		sendMessage(update.Message.Chat.Id, update.Message.Text)
 		textToTalk(update.Message)
+		convertMp3ToOga(update.Message)
 	}
 }
 
@@ -211,9 +215,38 @@ func sendCommandList(chatId int) error {
 
 func textToTalk(message Message) {
 	speech := htgotts.Speech{
-		Folder:   "audio",
+		Folder:   folderAudioName,
 		Language: voices.Russian,
 	}
 
 	speech.CreateSpeechFile(message.Text, strconv.Itoa(message.MessageId))
+}
+
+func convertMp3ToOga(message Message) error {
+	// Конвертация в OGG
+	err := convertToOGG(strconv.Itoa(message.MessageId))
+	if err != nil {
+		fmt.Println("Failed to convert WAV to OGG:", err)
+		return err
+	}
+
+	return nil
+}
+
+func convertToOGG(inputFile string) error {
+	cmd := exec.Command("python", "scripts/converter.py", inputFile, basePathToLoadMp3File, basePathToSaveOgaFile)
+
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		if exitErr, ok := err.(*exec.ExitError); ok {
+			fmt.Printf("Скрипт Python завершился с ошибкой: %v\n%s", exitErr, output)
+		} else {
+			fmt.Printf("Ошибка при выполнении скрипта Python: %v", err)
+		}
+	}
+
+	fmt.Println("Скрипт Python выполнен успешно!")
+	fmt.Println(string(output))
+
+	return nil
 }
