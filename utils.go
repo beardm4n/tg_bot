@@ -224,17 +224,7 @@ func textToTalk(message Message) {
 
 func convertMp3ToOga(message Message) error {
 	// Конвертация в OGG
-	err := convertToOGG(strconv.Itoa(message.MessageId))
-	if err != nil {
-		fmt.Println("Failed to convert WAV to OGG:", err)
-		return err
-	}
-
-	return nil
-}
-
-func convertToOGG(inputFile string) error {
-	cmd := exec.Command("python", "scripts/converter.py", inputFile, basePathToLoadMp3File, basePathToSaveOgaFile)
+	cmd := exec.Command("python", "scripts/converter.py", strconv.Itoa(message.MessageId), basePathToLoadMp3File, basePathToSaveOgaFile)
 
 	output, err := cmd.CombinedOutput()
 	if err != nil {
