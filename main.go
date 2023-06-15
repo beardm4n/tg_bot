@@ -10,6 +10,8 @@ var (
 		"GET_UPDATES":  "getUpdates",
 		"SEND_MESSAGE": "sendMessage",
 		"GET_FILE":     "getFile",
+		"SEND_VOICE":   "sendVoice",
+		"SEND_AUDIO":   "sendAudio",
 	}
 	commands = map[string]string{
 		"/start": "Bot is active now. Send /commands to get a list of commands",

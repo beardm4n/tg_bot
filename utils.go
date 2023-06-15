@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
+	"mime/multipart"
 	"net/http"
 	"net/url"
 	"os"
@@ -150,9 +152,9 @@ func processUpdate(update Update) {
 			}
 		}
 	} else {
-		sendMessage(update.Message.Chat.Id, update.Message.Text)
 		textToTalk(update.Message)
 		convertMp3ToOga(update.Message)
+		sendVoiceMessage(update.Message)
 	}
 }
 
@@ -237,6 +239,122 @@ func convertMp3ToOga(message Message) error {
 
 	fmt.Println("Python script completed successfully!")
 	fmt.Println(string(output))
+
+	return nil
+}
+
+func sendVoiceMessage(message Message) error {
+	voiceFilePath := filepath.FromSlash(fmt.Sprintf("%s/%s.mp3", basePathToLoadMp3File, strconv.Itoa(message.MessageId)))
+
+	// Открываем голосовой файл
+	file, err := os.Open(voiceFilePath)
+	if err != nil {
+		fmt.Println("Can't find path to voice file: ", err)
+		return err
+	}
+	defer file.Close()
+
+	// Создаем multipart/form-data для отправки файла
+	body := &bytes.Buffer{}
+	writer := multipart.NewWriter(body)
+	part, err := writer.CreateFormFile("voice", filepath.Base(voiceFilePath))
+	if err != nil {
+		fmt.Println("Can't create multipart/form-data: ", err)
+		return err
+	}
+
+	_, err = io.Copy(part, file)
+	if err != nil {
+		fmt.Println("Can't copy multipart/form-data: ", err)
+		return err
+	}
+	writer.Close()
+
+	// Создаем POST-запрос к API телеграма для отправки голосового сообщения
+	apiURL := baseUrl + botToken + "/" + telegramMethods["SEND_VOICE"] + "?chat_id=" + strconv.Itoa(message.Chat.Id)
+
+	fmt.Println("apiURL", apiURL)
+
+	req, err := http.NewRequest("POST", apiURL, body)
+	if err != nil {
+		fmt.Println("Can't request to send voice: ", err)
+		return err
+	}
+	req.Header.Set("Content-Type", writer.FormDataContentType())
+
+	// Отправляеме запрос и получаем ответ
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer resp.Body.Close()
+
+	// Выводим статус отправки сообщения
+	log.Println("Voice message send")
+
+	return nil
+}
+
+/*
+*	TODO надо сделать переключалку в командах в каком виде хочет пользователь получать ответы - аудио, войс или текст
+*	пока метод неиспользуется
+ */
+func sendAudioMessage(message Message) error {
+	audioFilePath := filepath.FromSlash(fmt.Sprintf("%s/%s.mp3", basePathToLoadMp3File, strconv.Itoa(message.MessageId)))
+
+	// Открываем аудиофайл
+	file, err := os.Open(audioFilePath)
+	if err != nil {
+		fmt.Println("Can't find path to voice file: ", err)
+		return err
+	}
+	defer file.Close()
+
+	// Создаем multipart/form-data для отправки файла
+	body := &bytes.Buffer{}
+	writer := multipart.NewWriter(body)
+	part, err := writer.CreateFormFile("audio", filepath.Base(audioFilePath))
+	if err != nil {
+		fmt.Println("Can't create multipart/form-data: ", err)
+		return err
+	}
+	
+	_, err = io.Copy(part, file)
+	if err != nil {
+		fmt.Println("Can't copy multipart/form-data: ", err)
+		return err
+	}
+	writer.Close()
+
+	// Создаем POST-запрос к API телеграма для отправки аудиофайла
+	apiURL := baseUrl + botToken + "/" + telegramMethods["SEND_AUDIO"] + "?chat_id=" + strconv.Itoa(message.Chat.Id)
+
+	req, err := http.NewRequest("POST", apiURL, body)
+	if err != nil {
+		fmt.Println("Can't request to send voice: ", err)
+		return err
+	}
+	req.Header.Set("Content-Type", writer.FormDataContentType())
+
+	// Отправляем запрос и получаем ответ
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		fmt.Println("Can't get response: ", err)
+		return err
+	}
+	defer resp.Body.Close()
+
+	// Читаем ответ
+	responseBody, err := io.ReadAll(resp.Body)
+	if err != nil {
+		fmt.Println("Can't read response: ", err)
+		return err
+	}
+
+	// Выводим ответ
+	log.Println("RESPONSE", string(responseBody))
 
 	return nil
 }

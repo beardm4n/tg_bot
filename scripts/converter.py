@@ -8,7 +8,7 @@ inputFilePath = sys.argv[1:][1]
 outputFilePath = sys.argv[1:][2]
 
 input_file = Path(inputFilePath + '/' + audioName + '.mp3')
-output_file = Path(outputFilePath + '/' + audioName + '.oga')
+output_file = Path(outputFilePath + '/' + audioName + '.ogg')
 
 def convert_to_oga(input_file, output_file):
     audio = AudioSegment.from_mp3(input_file)
