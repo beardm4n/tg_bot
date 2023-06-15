@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"log"
 	"mime/multipart"
 	"net/http"
 	"net/url"
@@ -271,9 +270,7 @@ func sendVoiceMessage(message Message) error {
 	writer.Close()
 
 	// Создаем POST-запрос к API телеграма для отправки голосового сообщения
-	apiURL := baseUrl + botToken + "/" + telegramMethods["SEND_VOICE"] + "?chat_id=" + strconv.Itoa(message.Chat.Id)
-
-	fmt.Println("apiURL", apiURL)
+	apiURL := baseUrl + botToken + "/" + telegramMethods["SEND_VOICE"]
 
 	req, err := http.NewRequest("POST", apiURL, body)
 	if err != nil {
@@ -282,16 +279,23 @@ func sendVoiceMessage(message Message) error {
 	}
 	req.Header.Set("Content-Type", writer.FormDataContentType())
 
+	// Добавляем параметры к телу запроса
+	querys := req.URL.Query()
+	querys.Add("chat_id", strconv.Itoa(message.Chat.Id))
+	querys.Add("reply_to_message_id", strconv.Itoa(message.MessageId))
+	req.URL.RawQuery = querys.Encode()
+
 	// Отправляеме запрос и получаем ответ
 	client := &http.Client{}
 	resp, err := client.Do(req)
 	if err != nil {
-		log.Fatal(err)
+		fmt.Println("Can't get response: ", err)
+		return err
 	}
 	defer resp.Body.Close()
 
 	// Выводим статус отправки сообщения
-	log.Println("Voice message send")
+	fmt.Println("Voice message send")
 
 	return nil
 }
@@ -319,7 +323,7 @@ func sendAudioMessage(message Message) error {
 		fmt.Println("Can't create multipart/form-data: ", err)
 		return err
 	}
-	
+
 	_, err = io.Copy(part, file)
 	if err != nil {
 		fmt.Println("Can't copy multipart/form-data: ", err)
@@ -328,14 +332,20 @@ func sendAudioMessage(message Message) error {
 	writer.Close()
 
 	// Создаем POST-запрос к API телеграма для отправки аудиофайла
-	apiURL := baseUrl + botToken + "/" + telegramMethods["SEND_AUDIO"] + "?chat_id=" + strconv.Itoa(message.Chat.Id)
+	apiURL := baseUrl + botToken + "/" + telegramMethods["SEND_AUDIO"]
 
 	req, err := http.NewRequest("POST", apiURL, body)
 	if err != nil {
-		fmt.Println("Can't request to send voice: ", err)
+		fmt.Println("Can't request to send audio: ", err)
 		return err
 	}
 	req.Header.Set("Content-Type", writer.FormDataContentType())
+
+	// Добавляем параметры к телу запроса
+	querys := req.URL.Query()
+	querys.Add("chat_id", strconv.Itoa(message.Chat.Id))
+	querys.Add("reply_to_message_id", strconv.Itoa(message.MessageId))
+	req.URL.RawQuery = querys.Encode()
 
 	// Отправляем запрос и получаем ответ
 	client := &http.Client{}
@@ -346,15 +356,8 @@ func sendAudioMessage(message Message) error {
 	}
 	defer resp.Body.Close()
 
-	// Читаем ответ
-	responseBody, err := io.ReadAll(resp.Body)
-	if err != nil {
-		fmt.Println("Can't read response: ", err)
-		return err
-	}
-
-	// Выводим ответ
-	log.Println("RESPONSE", string(responseBody))
+	// Выводим статус отправки сообщения
+	fmt.Println("Audio message send")
 
 	return nil
 }
