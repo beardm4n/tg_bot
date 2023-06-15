@@ -17,7 +17,6 @@ import (
 	"github.com/joho/godotenv"
 
 	htgotts "github.com/hegedustibor/htgo-tts"
-	voices "github.com/hegedustibor/htgo-tts/voices"
 )
 
 func initEnv() error {
@@ -147,7 +146,7 @@ func processUpdate(update Update) {
 			if description, ok := commands[command]; ok {
 				sendMessage(message.Chat.Id, description)
 			} else {
-				sendMessage(message.Chat.Id, "Unknown coomand.")
+				sendMessage(message.Chat.Id, " Send /commands to get a list of commands.")
 			}
 		}
 	} else {
@@ -217,7 +216,7 @@ func sendCommandList(chatId int) error {
 func textToTalk(message Message) {
 	speech := htgotts.Speech{
 		Folder:   folderAudioName,
-		Language: voices.Russian,
+		Language: message.From.LanguageCode,
 	}
 
 	speech.CreateSpeechFile(message.Text, strconv.Itoa(message.MessageId))

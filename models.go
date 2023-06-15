@@ -7,6 +7,7 @@ type Update struct {
 
 type Message struct {
 	MessageId int    `json:"message_id"`
+	From      User   `json:"from"`
 	Chat      Chat   `json:"chat"`
 	Text      string `json:"text"`
 	Voice     Voice  `json:"voice"`
@@ -52,4 +53,8 @@ type File struct {
 	FileUniqId string `json:"file_unique_id"`
 	FileSize   int    `json:"file_size"`
 	FilePath   string `json:"file_path"`
+}
+
+type User struct {
+	LanguageCode string `json:"language_code"`
 }
