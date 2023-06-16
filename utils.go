@@ -144,32 +144,25 @@ func processUpdate(update Update) {
 			sendCommandList(message.Chat.Id)
 		} else {
 			if description, ok := commands[command]; ok {
-				sendMessage(message.Chat.Id, description)
+				sendMessage(message, description)
 			} else {
-				sendMessage(message.Chat.Id, " Send /commands to get a list of commands.")
+				sendMessage(message, "Send /commands to get a list of commands.")
 			}
 		}
 	} else {
 		textToTalk(update.Message)
 		convertMp3ToOga(update.Message)
-		sendVoiceMessage(update.Message)
+		sendMessage(update.Message, "")
 	}
 }
 
-func sendMessage(chatId int, text string) error {
-	queryParams := url.Values{}
-	queryParams.Add("chat_id", strconv.FormatInt(int64(chatId), 10))
-	queryParams.Add("text", text)
-
-	urlStr := baseUrl + botToken + "/" + telegramMethods["SEND_MESSAGE"]
-
-	resp, err := http.PostForm(urlStr, queryParams)
-	if err != nil {
-		fmt.Println("Failed to send message:", err)
-		return err
+func sendMessage(message Message, text string) error {
+	if text != "" {
+		sendTextMessage(message, text)
+		return nil
 	}
 
-	resp.Body.Close()
+	sendVoiceMessage(message)
 
 	return nil
 }
@@ -237,6 +230,24 @@ func convertMp3ToOga(message Message) error {
 
 	fmt.Println("Python script completed successfully!")
 	fmt.Println(string(output))
+
+	return nil
+}
+
+func sendTextMessage(message Message, text string) error {
+	queryParams := url.Values{}
+	queryParams.Add("chat_id", strconv.FormatInt(int64(message.Chat.Id), 10))
+	queryParams.Add("text", text)
+
+	urlStr := baseUrl + botToken + "/" + telegramMethods["SEND_MESSAGE"]
+
+	resp, err := http.PostForm(urlStr, queryParams)
+	if err != nil {
+		fmt.Println("Failed to send message:", err)
+		return err
+	}
+
+	resp.Body.Close()
 
 	return nil
 }
