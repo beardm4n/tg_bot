@@ -22,6 +22,7 @@ import (
 func initEnv() error {
 	err := godotenv.Load()
 	if err != nil {
+		fmt.Println("Something went wrong in get env variables")
 		return err
 	}
 
@@ -136,6 +137,8 @@ func processUpdate(update Update) {
 	// получение и обработка голосового сообщения
 	if len(message.Voice.FileId) != 0 {
 		downloadFile(message)
+		fmt.Println("Download file completed")
+
 		return
 	}
 
@@ -229,7 +232,6 @@ func convertMp3ToOga(message Message) error {
 	}
 
 	fmt.Println("Python script completed successfully!")
-	fmt.Println(string(output))
 
 	return nil
 }
