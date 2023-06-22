@@ -14,6 +14,9 @@ import (
 	"strconv"
 	"strings"
 
+	"tg_bot/file"
+	types "tg_bot/helpers"
+
 	"github.com/joho/godotenv"
 
 	htgotts "github.com/hegedustibor/htgo-tts"
@@ -36,7 +39,7 @@ func initEnv() error {
 	return nil
 }
 
-func getUpdates(baseUrl string, botToken string, method string, offset int) ([]Update, error) {
+func getUpdates(baseUrl string, botToken string, method string, offset int) ([]types.Update, error) {
 	resp, err := http.Get(baseUrl + botToken + "/" + method + "?offset=" + strconv.Itoa(offset))
 	if err != nil {
 		fmt.Println("Something went wrong in requset: ", err)
@@ -55,7 +58,7 @@ func getUpdates(baseUrl string, botToken string, method string, offset int) ([]U
 		}
 	}
 
-	var restResponse MessageResponse
+	var restResponse types.MessageResponse
 
 	// необходим распарсить json, который получили от сервера, который приведем к структуре RestResponse
 	err = json.Unmarshal(body, &restResponse)
@@ -67,76 +70,13 @@ func getUpdates(baseUrl string, botToken string, method string, offset int) ([]U
 	return restResponse.Result, nil
 }
 
-func getFile(fileId string) File {
-	urlGetFile := baseUrl + botToken + "/" + telegramMethods["GET_FILE"] + "?file_id=" + fileId
-
-	resp, err := http.Get(urlGetFile)
-	if err != nil {
-		fmt.Println("Something went wrong in error handling in getFile: ", err)
-	}
-
-	// ответ от сервера получаем в байтах, необходимо обработать его
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		if err != nil {
-			fmt.Println("Something went wrong in error handling in getUpdates: ", err)
-		}
-	}
-
-	defer resp.Body.Close()
-
-	var restResponse VoiceResponse
-
-	err = json.Unmarshal(body, &restResponse)
-	if err != nil {
-		fmt.Println("Something went wrong in parse json in getFile: ", err)
-	}
-
-	return restResponse.Result
-}
-
-func downloadFile(message Message) {
-	// перенести код ниже сюда
-	// посмотреть как можно унифицировать слэши в пути для разных ОС
-	file := getFile(message.Voice.FileId)
-
-	downloadFileUrl := fileUrl + botToken + "/" + file.FilePath
-
-	// Выполняем запрос для получения содержимого файла
-	fileResp, err := http.Get(downloadFileUrl)
-	if err != nil {
-		fmt.Println("Something went wrong in error handling in download file")
-		return
-	}
-
-	defer fileResp.Body.Close()
-
-	filePathOnDisk := filepath.FromSlash(fmt.Sprintf("%s/voice_%s.oga", basePathToSaveFile, message.Voice.FileId))
-
-	// Создаем файл на диске для сохранения содержимого
-	fileOnDisk, err := os.Create(filePathOnDisk)
-	if err != nil {
-		fmt.Println("Something went wrong in create file into disk")
-		return
-	}
-
-	defer fileOnDisk.Close()
-
-	// Копируем полученный файл в файл на диске
-	_, err = io.Copy(fileOnDisk, fileResp.Body)
-	if err != nil {
-		fmt.Println("Something went wrong when save file into disk")
-		return
-	}
-}
-
-func processUpdate(update Update) {
+func processUpdate(update types.Update) {
 	message := update.Message
 	command := strings.TrimSpace(message.Text)
 
 	// получение и обработка голосового сообщения
 	if len(message.Voice.FileId) != 0 {
-		downloadFile(message)
+		file.DownloadFile(baseUrl, botToken, telegramMethods["GET_FILE"], fileUrl, basePathToSaveFile, message)
 		fmt.Println("Download file completed")
 
 		return
@@ -159,7 +99,7 @@ func processUpdate(update Update) {
 	}
 }
 
-func sendMessage(message Message, text string) error {
+func sendMessage(message types.Message, text string) error {
 	if text != "" {
 		sendTextMessage(message, text)
 		return nil
@@ -171,22 +111,22 @@ func sendMessage(message Message, text string) error {
 }
 
 func sendCommandList(chatId int) error {
-	buttons := [][]KeyboardButton{}
+	buttons := [][]types.KeyboardButton{}
 
 	for command := range commands {
-		buttonRow := []KeyboardButton{
+		buttonRow := []types.KeyboardButton{
 			{Text: command},
 		}
 
 		buttons = append(buttons, buttonRow)
 	}
 
-	replyKeyboard := ReplyKeyboardMarkup{
+	replyKeyboard := types.ReplyKeyboardMarkup{
 		Keyboard:        buttons,
 		OneTimeKeyboard: true,
 	}
 
-	requestBody := BotMessage{
+	requestBody := types.BotMessage{
 		ChatId:      chatId,
 		Text:        "Commands list:",
 		ReplyMarkup: replyKeyboard,
@@ -209,7 +149,7 @@ func sendCommandList(chatId int) error {
 	return nil
 }
 
-func textToTalk(message Message) {
+func textToTalk(message types.Message) {
 	speech := htgotts.Speech{
 		Folder:   folderAudioName,
 		Language: message.From.LanguageCode,
@@ -218,7 +158,7 @@ func textToTalk(message Message) {
 	speech.CreateSpeechFile(message.Text, strconv.Itoa(message.MessageId))
 }
 
-func convertMp3ToOga(message Message) error {
+func convertMp3ToOga(message types.Message) error {
 	// Конвертация в OGG
 	cmd := exec.Command("python", "scripts/converter.py", strconv.Itoa(message.MessageId), basePathToLoadMp3File, basePathToSaveOgaFile)
 
@@ -236,7 +176,7 @@ func convertMp3ToOga(message Message) error {
 	return nil
 }
 
-func sendTextMessage(message Message, text string) error {
+func sendTextMessage(message types.Message, text string) error {
 	queryParams := url.Values{}
 	queryParams.Add("chat_id", strconv.FormatInt(int64(message.Chat.Id), 10))
 	queryParams.Add("text", text)
@@ -254,7 +194,7 @@ func sendTextMessage(message Message, text string) error {
 	return nil
 }
 
-func sendVoiceMessage(message Message) error {
+func sendVoiceMessage(message types.Message) error {
 	voiceFilePath := filepath.FromSlash(fmt.Sprintf("%s/%s.mp3", basePathToLoadMp3File, strconv.Itoa(message.MessageId)))
 
 	// Открываем голосовой файл
@@ -316,7 +256,7 @@ func sendVoiceMessage(message Message) error {
 *	TODO надо сделать переключалку в командах в каком виде хочет пользователь получать ответы - аудио, войс или текст
 *	пока метод неиспользуется
  */
-func sendAudioMessage(message Message) error {
+func sendAudioMessage(message types.Message) error {
 	audioFilePath := filepath.FromSlash(fmt.Sprintf("%s/%s.mp3", basePathToLoadMp3File, strconv.Itoa(message.MessageId)))
 
 	// Открываем аудиофайл
