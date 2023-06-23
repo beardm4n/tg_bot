@@ -1,25 +1,21 @@
 package main
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
 	"io"
-	"mime/multipart"
 	"net/http"
-	"net/url"
 	"os"
 	"os/exec"
-	"path/filepath"
 	"strconv"
 	"strings"
 
 	"tg_bot/file"
 	types "tg_bot/helpers"
-
-	"github.com/joho/godotenv"
+	messages "tg_bot/message"
 
 	htgotts "github.com/hegedustibor/htgo-tts"
+	"github.com/joho/godotenv"
 )
 
 func initEnv() error {
@@ -84,7 +80,7 @@ func processUpdate(update types.Update) {
 
 	if strings.HasPrefix(message.Text, "/") {
 		if command == "/commands" {
-			sendCommandList(message.Chat.Id)
+			messages.SendCommandList(message.Chat.Id, commands, baseUrl, botToken, telegramMethods["SEND_MESSAGE"])
 		} else {
 			if description, ok := commands[command]; ok {
 				sendMessage(message, description)
@@ -101,50 +97,11 @@ func processUpdate(update types.Update) {
 
 func sendMessage(message types.Message, text string) error {
 	if text != "" {
-		sendTextMessage(message, text)
+		messages.SendTextMessage(message, text, baseUrl, botToken, telegramMethods["SEND_MESSAGE"])
 		return nil
 	}
 
-	sendVoiceMessage(message)
-
-	return nil
-}
-
-func sendCommandList(chatId int) error {
-	buttons := [][]types.KeyboardButton{}
-
-	for command := range commands {
-		buttonRow := []types.KeyboardButton{
-			{Text: command},
-		}
-
-		buttons = append(buttons, buttonRow)
-	}
-
-	replyKeyboard := types.ReplyKeyboardMarkup{
-		Keyboard:        buttons,
-		OneTimeKeyboard: true,
-	}
-
-	requestBody := types.BotMessage{
-		ChatId:      chatId,
-		Text:        "Commands list:",
-		ReplyMarkup: replyKeyboard,
-	}
-
-	requestBodyJson, err := json.Marshal(requestBody)
-	if err != nil {
-		fmt.Println("Can't encode request body: ", err)
-		return err
-	}
-
-	resp, err := http.Post(baseUrl+botToken+"/"+telegramMethods["SEND_MESSAGE"], "application/json", bytes.NewReader(requestBodyJson))
-	if err != nil {
-		fmt.Println("Can't set menu buttons: ", err)
-		return err
-	}
-
-	resp.Body.Close()
+	messages.SendVoiceMessage(message, basePathToLoadMp3File, baseUrl, botToken, telegramMethods["SEND_VOICE"])
 
 	return nil
 }
@@ -172,144 +129,6 @@ func convertMp3ToOga(message types.Message) error {
 	}
 
 	fmt.Println("Python script completed successfully!")
-
-	return nil
-}
-
-func sendTextMessage(message types.Message, text string) error {
-	queryParams := url.Values{}
-	queryParams.Add("chat_id", strconv.FormatInt(int64(message.Chat.Id), 10))
-	queryParams.Add("text", text)
-
-	urlStr := baseUrl + botToken + "/" + telegramMethods["SEND_MESSAGE"]
-
-	resp, err := http.PostForm(urlStr, queryParams)
-	if err != nil {
-		fmt.Println("Failed to send message:", err)
-		return err
-	}
-
-	resp.Body.Close()
-
-	return nil
-}
-
-func sendVoiceMessage(message types.Message) error {
-	voiceFilePath := filepath.FromSlash(fmt.Sprintf("%s/%s.mp3", basePathToLoadMp3File, strconv.Itoa(message.MessageId)))
-
-	// Открываем голосовой файл
-	file, err := os.Open(voiceFilePath)
-	if err != nil {
-		fmt.Println("Can't find path to voice file: ", err)
-		return err
-	}
-	defer file.Close()
-
-	// Создаем multipart/form-data для отправки файла
-	body := &bytes.Buffer{}
-	writer := multipart.NewWriter(body)
-	part, err := writer.CreateFormFile("voice", filepath.Base(voiceFilePath))
-	if err != nil {
-		fmt.Println("Can't create multipart/form-data: ", err)
-		return err
-	}
-
-	_, err = io.Copy(part, file)
-	if err != nil {
-		fmt.Println("Can't copy multipart/form-data: ", err)
-		return err
-	}
-	writer.Close()
-
-	// Создаем POST-запрос к API телеграма для отправки голосового сообщения
-	apiURL := baseUrl + botToken + "/" + telegramMethods["SEND_VOICE"]
-
-	req, err := http.NewRequest("POST", apiURL, body)
-	if err != nil {
-		fmt.Println("Can't request to send voice: ", err)
-		return err
-	}
-	req.Header.Set("Content-Type", writer.FormDataContentType())
-
-	// Добавляем параметры к телу запроса
-	querys := req.URL.Query()
-	querys.Add("chat_id", strconv.Itoa(message.Chat.Id))
-	querys.Add("reply_to_message_id", strconv.Itoa(message.MessageId))
-	req.URL.RawQuery = querys.Encode()
-
-	// Отправляеме запрос и получаем ответ
-	client := &http.Client{}
-	resp, err := client.Do(req)
-	if err != nil {
-		fmt.Println("Can't get response: ", err)
-		return err
-	}
-	defer resp.Body.Close()
-
-	// Выводим статус отправки сообщения
-	fmt.Println("Voice message send")
-
-	return nil
-}
-
-/*
-*	TODO надо сделать переключалку в командах в каком виде хочет пользователь получать ответы - аудио, войс или текст
-*	пока метод неиспользуется
- */
-func sendAudioMessage(message types.Message) error {
-	audioFilePath := filepath.FromSlash(fmt.Sprintf("%s/%s.mp3", basePathToLoadMp3File, strconv.Itoa(message.MessageId)))
-
-	// Открываем аудиофайл
-	file, err := os.Open(audioFilePath)
-	if err != nil {
-		fmt.Println("Can't find path to voice file: ", err)
-		return err
-	}
-	defer file.Close()
-
-	// Создаем multipart/form-data для отправки файла
-	body := &bytes.Buffer{}
-	writer := multipart.NewWriter(body)
-	part, err := writer.CreateFormFile("audio", filepath.Base(audioFilePath))
-	if err != nil {
-		fmt.Println("Can't create multipart/form-data: ", err)
-		return err
-	}
-
-	_, err = io.Copy(part, file)
-	if err != nil {
-		fmt.Println("Can't copy multipart/form-data: ", err)
-		return err
-	}
-	writer.Close()
-
-	// Создаем POST-запрос к API телеграма для отправки аудиофайла
-	apiURL := baseUrl + botToken + "/" + telegramMethods["SEND_AUDIO"]
-
-	req, err := http.NewRequest("POST", apiURL, body)
-	if err != nil {
-		fmt.Println("Can't request to send audio: ", err)
-		return err
-	}
-	req.Header.Set("Content-Type", writer.FormDataContentType())
-
-	// Добавляем параметры к телу запроса
-	querys := req.URL.Query()
-	querys.Add("chat_id", strconv.Itoa(message.Chat.Id))
-	querys.Add("reply_to_message_id", strconv.Itoa(message.MessageId))
-	req.URL.RawQuery = querys.Encode()
-
-	// Отправляем запрос и получаем ответ
-	client := &http.Client{}
-	resp, err := client.Do(req)
-	if err != nil {
-		fmt.Println("Can't get response: ", err)
-		return err
-	}
-	defer resp.Body.Close()
-
-	// Выводим статус отправки сообщения
-	fmt.Println("Audio message send")
 
 	return nil
 }
